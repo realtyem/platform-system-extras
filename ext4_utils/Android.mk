@@ -21,12 +21,13 @@ libext4_utils_src_files := \
 include $(CLEAR_VARS)
 LOCAL_SRC_FILES := $(libext4_utils_src_files)
 LOCAL_MODULE := libext4_utils_host
-LOCAL_STATIC_LIBRARIES := \
-    libsparse_host \
-    libz
-ifneq ($(HOST_OS),windows)
+LOCAL_C_INCLUDES += external/zlib
+LOCAL_STATIC_LIBRARIES += libsparse_host
+ifeq ($(HAVE_SELINUX), true)
+  LOCAL_C_INCLUDES += external/libselinux/include
   LOCAL_STATIC_LIBRARIES += libselinux
-endif
+  LOCAL_CFLAGS += -DHAVE_SELINUX
+endif # HAVE_SELINUX
 include $(BUILD_HOST_STATIC_LIBRARY)
 
 
@@ -40,8 +41,11 @@ LOCAL_STATIC_LIBRARIES += \
 ifeq ($(HOST_OS),windows)
   LOCAL_LDLIBS += -lws2_32
 else
-  LOCAL_STATIC_LIBRARIES += libselinux
-  LOCAL_CFLAGS := -DHOST
+  ifeq ($(HAVE_SELINUX), true)
+    LOCAL_C_INCLUDES += external/libselinux/include
+    LOCAL_STATIC_LIBRARIES += libselinux
+    LOCAL_CFLAGS += -DHAVE_SELINUX
+  endif # HAVE_SELINUX
 endif
 include $(BUILD_HOST_EXECUTABLE)
 
@@ -55,40 +59,84 @@ ifneq ($(HOST_OS),windows)
 include $(CLEAR_VARS)
 LOCAL_SRC_FILES := $(libext4_utils_src_files)
 LOCAL_MODULE := libext4_utils
+LOCAL_C_INCLUDES += external/zlib
 LOCAL_SHARED_LIBRARIES := \
-    libselinux \
     libsparse \
     libz
+ifeq ($(HAVE_SELINUX), true)
+  LOCAL_C_INCLUDES += external/libselinux/include
+  LOCAL_SHARED_LIBRARIES += libselinux
+  LOCAL_CFLAGS += -DHAVE_SELINUX
+endif # HAVE_SELINUX
+
+ifeq ($(BOARD_SUPPRESS_EMMC_WIPE),true)
+    LOCAL_CFLAGS += -DSUPPRESS_EMMC_WIPE
+endif
+
 include $(BUILD_SHARED_LIBRARY)
 
 
 include $(CLEAR_VARS)
 LOCAL_SRC_FILES := $(libext4_utils_src_files)
 LOCAL_MODULE := libext4_utils_static
+LOCAL_C_INCLUDES += external/zlib
 LOCAL_STATIC_LIBRARIES += \
-    libselinux \
     libsparse_static
+ifeq ($(HAVE_SELINUX), true)
+  LOCAL_C_INCLUDES += external/libselinux/include
+  LOCAL_STATIC_LIBRARIES += libselinux
+  LOCAL_CFLAGS += -DHAVE_SELINUX
+endif # HAVE_SELINUX
+
+ifeq ($(BOARD_SUPPRESS_EMMC_WIPE),true)
+    LOCAL_CFLAGS += -DSUPPRESS_EMMC_WIPE
+endif
+
 include $(BUILD_STATIC_LIBRARY)
 
 
 include $(CLEAR_VARS)
 LOCAL_SRC_FILES := make_ext4fs_main.c
 LOCAL_MODULE := make_ext4fs
-LOCAL_SHARED_LIBRARIES := \
-    libext4_utils \
-    libselinux \
-    libz
+LOCAL_SHARED_LIBRARIES += libext4_utils libz
+ifeq ($(HAVE_SELINUX), true)
+  LOCAL_C_INCLUDES += external/libselinux/include
+  LOCAL_SHARED_LIBRARIES += libselinux
+  LOCAL_CFLAGS += -DHAVE_SELINUX
+endif # HAVE_SELINUX
 include $(BUILD_EXECUTABLE)
 
+include $(CLEAR_VARS)
+LOCAL_SRC_FILES := make_ext4fs_main.c
+LOCAL_MODULE := utility_make_ext4fs
+LOCAL_MODULE_STEM := make_ext4fs
+LOCAL_MODULE_TAGS := optional
+LOCAL_FORCE_STATIC_EXECUTABLE := true
+LOCAL_MODULE_CLASS := UTILITY_EXECUTABLES
+LOCAL_MODULE_PATH := $(PRODUCT_OUT)/utilities
+LOCAL_UNSTRIPPED_PATH := $(PRODUCT_OUT)/symbols/utilities
+LOCAL_STATIC_LIBRARIES += \
+    libext4_utils_static \
+    libsparse_static \
+    libz \
+    libcutils \
+    libc
+
+include $(BUILD_EXECUTABLE)
 
 include $(CLEAR_VARS)
+
 LOCAL_SRC_FILES := ext2simg.c
 LOCAL_MODULE := ext2simg
 LOCAL_SHARED_LIBRARIES += \
     libext4_utils \
-    libselinux \
     libsparse \
     libz
+ifeq ($(HAVE_SELINUX), true)
+  LOCAL_C_INCLUDES += external/libselinux/include
+  LOCAL_SHARED_LIBRARIES += libselinux
+  LOCAL_CFLAGS += -DHAVE_SELINUX
+endif # HAVE_SELINUX
 include $(BUILD_EXECUTABLE)
 
 
@@ -97,9 +145,13 @@ LOCAL_SRC_FILES := ext2simg.c
 LOCAL_MODULE := ext2simg
 LOCAL_STATIC_LIBRARIES += \
     libext4_utils_host \
-    libselinux \
     libsparse_host \
     libz
+ifeq ($(HAVE_SELINUX), true)
+  LOCAL_C_INCLUDES += external/libselinux/include
+  LOCAL_STATIC_LIBRARIES += libselinux
+  LOCAL_CFLAGS += -DHAVE_SELINUX
+endif # HAVE_SELINUX
 include $(BUILD_HOST_EXECUTABLE)
 
 
