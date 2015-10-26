@@ -32,7 +32,9 @@
 #ifdef HAVE_SELINUX
 #include <selinux/selinux.h>
 #include <selinux/label.h>
+#if !defined(HOST)
 #include <selinux/android.h>
+#endif
 #else
 struct selabel_handle;
 #endif
@@ -53,10 +55,10 @@ static void usage(char *path)
 {
 	fprintf(stderr, "%s [ -l <len> ] [ -j <journal size> ] [ -b <block_size> ]\n", basename(path));
 	fprintf(stderr, "    [ -g <blocks per group> ] [ -i <inodes> ] [ -I <inode size> ]\n");
-	fprintf(stderr, "    [ -L <label> ] [ -f ] [ -a <android mountpoint> ]\n");
+	fprintf(stderr, "    [ -L <label> ] [ -f ] [ -a <android mountpoint> ] [ -u ]\n");
 	fprintf(stderr, "    [ -S file_contexts ] [ -C fs_config ] [ -T timestamp ]\n");
 	fprintf(stderr, "    [ -z | -s ] [ -w ] [ -c ] [ -J ] [ -v ] [ -B <block_list_file> ]\n");
-	fprintf(stderr, "    <filename> [<directory>]\n");
+	fprintf(stderr, "    <filename> [[<directory>] <target_out_directory>]\n");
 }
 
 int main(int argc, char **argv)
@@ -64,6 +66,7 @@ int main(int argc, char **argv)
 	int opt;
 	const char *filename = NULL;
 	const char *directory = NULL;
+	const char *target_out_directory = NULL;
 	char *mountpoint = NULL;
 	fs_config_func_t fs_config_func = NULL;
 	const char *fs_config_file = NULL;
@@ -71,6 +74,7 @@ int main(int argc, char **argv)
 	int sparse = 0;
 	int crc = 0;
 	int wipe = 0;
+	int real_uuid = 0;
 	int fd;
 	int exitcode;
 	int verbose = 0;
@@ -84,7 +88,7 @@ int main(int argc, char **argv)
 #endif
 #endif
 
-	while ((opt = getopt(argc, argv, "l:j:b:g:i:I:L:a:S:T:C:B:fwzJsctv")) != -1) {
+	while ((opt = getopt(argc, argv, "l:j:b:g:i:I:L:a:S:T:C:B:fwzJsctvu")) != -1) {
 		switch (opt) {
 		case 'l':
 			info.len = parse_num(optarg);
@@ -121,6 +125,9 @@ int main(int argc, char **argv)
 			break;
 		case 'w':
 			wipe = 1;
+			break;
+		case 'u':
+			real_uuid = 1;
 			break;
 		case 'z':
 			gzip = 1;
@@ -219,6 +226,9 @@ int main(int argc, char **argv)
 	if (optind < argc)
 		directory = argv[optind++];
 
+	if (optind < argc)
+		target_out_directory = argv[optind++];
+
 	if (optind < argc) {
 		fprintf(stderr, "Unexpected argument: %s\n", argv[optind]);
 		usage(argv[0]);
@@ -235,8 +245,8 @@ int main(int argc, char **argv)
 		fd = STDOUT_FILENO;
 	}
 
-	exitcode = make_ext4fs_internal(fd, directory, mountpoint, fs_config_func, gzip,
-		sparse, crc, wipe, sehnd, verbose, fixed_time, block_list_file);
+	exitcode = make_ext4fs_internal(fd, directory, target_out_directory, mountpoint, fs_config_func, gzip,
+		sparse, crc, wipe, real_uuid, sehnd, verbose, fixed_time, block_list_file);
 	close(fd);
 	if (block_list_file)
 		fclose(block_list_file);
