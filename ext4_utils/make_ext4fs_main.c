@@ -31,6 +31,7 @@
 #endif
 
 #ifdef HAVE_SELINUX
+#ifndef _WIN32
 #include <selinux/selinux.h>
 #include <selinux/label.h>
 #if !defined(HOST)
@@ -39,12 +40,12 @@
 #else
 struct selabel_handle;
 #endif
+#endif
 
+#include "ext4_utils/ext4_utils.h"
+#include "ext4_utils/make_ext4fs.h"
 
-#include "make_ext4fs.h"
-#include "ext4_utils.h"
-
-#ifndef USE_MINGW /* O_BINARY is windows-specific flag */
+#ifndef _WIN32 /* O_BINARY is windows-specific flag */
 #define O_BINARY 0
 #endif
 
@@ -55,6 +56,7 @@ static void usage(char *path)
 {
 	fprintf(stderr, "%s [ -l <len> ] [ -j <journal size> ] [ -b <block_size> ]\n", basename(path));
 	fprintf(stderr, "    [ -g <blocks per group> ] [ -i <inodes> ] [ -I <inode size> ]\n");
+	fprintf(stderr, "    [ -e <flash erase block size> ] [ -o <flash logical block size> ]\n");
 	fprintf(stderr, "    [ -L <label> ] [ -f ] [ -a <android mountpoint> ] [ -u ]\n");
 	fprintf(stderr, "    [ -S file_contexts ] [ -C fs_config ] [ -T timestamp ]\n");
 	fprintf(stderr, "    [ -z | -s ] [ -w ] [ -c ] [ -J ] [ -v ] [ -B <block_list_file> ]\n");
@@ -86,11 +88,13 @@ int main(int argc, char **argv)
 	FILE* base_alloc_file_out = NULL;
 #ifdef HAVE_SELINUX
 #ifndef USE_MINGW
+#ifndef _WIN32
 	struct selinux_opt seopts[] = { { SELABEL_OPT_PATH, "" } };
 #endif
 #endif
+#endif
 
-	while ((opt = getopt(argc, argv, "l:j:b:g:i:I:L:a:S:T:C:B:d:D:fwzJsctvu")) != -1) {
+	while ((opt = getopt(argc, argv, "l:j:b:g:i:I:e:o:L:a:S:T:C:B:d:D:fwzJsctvu")) != -1) {
 		switch (opt) {
 		case 'l':
 			info.len = parse_num(optarg);
@@ -109,6 +113,12 @@ int main(int argc, char **argv)
 			break;
 		case 'I':
 			info.inode_size = parse_num(optarg);
+			break;
+		case 'e':
+			info.flash_erase_block_size = parse_num(optarg);
+			break;
+		case 'o':
+			info.flash_logical_block_size = parse_num(optarg);
 			break;
 		case 'L':
 			info.label = optarg;
@@ -149,12 +159,14 @@ int main(int argc, char **argv)
 		case 'S':
 #ifdef HAVE_SELINUX
 #ifndef USE_MINGW
+#ifndef _WIN32
 			seopts[0].value = optarg;
 			sehnd = selabel_open(SELABEL_CTX_FILE, seopts, 1);
 			if (!sehnd) {
 				perror(optarg);
 				exit(EXIT_FAILURE);
 			}
+#endif
 #endif
 #endif
 			break;
